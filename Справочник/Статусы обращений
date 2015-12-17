@@ -1,0 +1,11 @@
+Перечисленны в таблице StatusObrType
+
+SELECT [id],[name],[SortOrder] FROM [dotProject2].[dbo].[StatusObrType]
+
+id	name
+1	Новое
+2	Закрыто
+3	Рассматривается
+4	Принято
+5	Возвращено
+6	Задания выданы
