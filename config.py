@@ -13,10 +13,10 @@ def readConfig(file="config.ini"):
     '''
     Разбирает конфигурационный файл
     :param file: имя файла конфигурации
-    :return: словарь, первый ключ - имя секции, значение - словарь с константами
-    и кол-во ошибок
+    :return: словари и кол-во ошибок
     '''
     DB = dict()
+    work = dict()
     users = list()
     err = 0
     if os.access(file, os.F_OK):
@@ -43,18 +43,23 @@ def readConfig(file="config.ini"):
                 user['email'] = i.get('email', fallback= "")
                 user['name'] = i.get('name', fallback="Не указано")
                 user['correct1'] = i.get('Рассматривается', fallback=0)
+                user['jabber'] = i.get('jabber', fallback="")
                 users.append(user)
+            elif section == 'work':
+                work['noActiveObr'] = i.get('noActiveObr', fallback="5")
+
     else:
         print("Ошибка! Не найден конфигурационный файл")
         err = 1
-    return DB, users, err
+    return DB, users, work, err
 
 
-def configValidator(DB, users):
+def configValidator(DB, users, work):
     """
     Проверяет заполнение обязательных полей в настройках
-    :param DB:  словарь для БД
-    :param users: список пользователей
+    :param DB:  настроек для БД
+    :param users: настроек пользователей
+    :param work: словарь настроек
     :return: сообщение об ошибках
     """
     errMess = ""
@@ -66,6 +71,13 @@ def configValidator(DB, users):
         errMess += 'Не заполнен порт сервера БД'
     if DB['user'] == '':
         errMess += 'Не заполнено имя пользователя для подключения к БД.'
+
+    if work['noActiveObr'].isdigit() :
+        work['noActiveObr'] = int(work['noActiveObr'])
+        if work['noActiveObr'] <= 0 :
+            errMess += 'Кол-во дней неактивности по обращениям должно быть больше 0 дней.'
+    else:
+        errMess += 'Кол-во дней неактивности должно быть цифрой'
 
     if users :
         for user in users:
