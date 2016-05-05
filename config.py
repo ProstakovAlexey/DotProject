@@ -44,6 +44,7 @@ def readConfig(file="config.ini"):
                 user['name'] = i.get('name', fallback="Не указано")
                 user['correct1'] = i.get('Рассматривается', fallback=0)
                 user['jabber'] = i.get('jabber', fallback="")
+                user['slack'] = i.get('slack', fallback="")
                 users.append(user)
             elif section == 'work':
                 work['noActiveObr'] = i.get('noActiveObr', fallback="5")

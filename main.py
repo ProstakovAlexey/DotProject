@@ -16,6 +16,8 @@ import pypyodbc
 import config
 import subprocess
 import datetime
+from slacker import Slacker
+
 
 
 def jobList(cur, obr):
@@ -40,6 +42,7 @@ def obrJobComplete(cur, user):
     :param user: id специалиста
     :return: список обращений
     """
+    msg = ""
     # получаем список обращений пользователя со статусом задания выданы
     cur.execute('SELECT id FROM Obr WHERE UserId = ? and StatusObrId = ?', (user, 6))
     complete = list()
@@ -61,8 +64,8 @@ def obrJobComplete(cur, user):
                 # не найдены не выполненные задания
                 complete.append(obr)
         else:
-            print('Ошибка в обращении %s. Установлен статус задания выданы, а ни одного задания нет' % obr)
-    return complete
+            msg = 'Ошибка в обращении %s. Установлен статус задания выданы, а ни одного задания нет.\n' % obr
+    return complete, msg
 
 
 def obrValid1(cur, user):
@@ -114,14 +117,56 @@ def obrValid2(cur, user, day=5):
             # есть комментарии, проверим дату, чтобы была больше указанной
             if now - res[0] > t :
                 # проверим, чтобы комментарий был от нас
-                cur.execute('select UserTypeId from Users where id = ?', (res[1],))
-                if cur.fetchone()[0] == 1:
-                    # да это наш комментарий
-                    waitList.append(obr)
+                res = cur.execute('select UserTypeId from Users where id = ?', (res[1],)).fetchone()
+                if res:
+                    if res[0] == 1:
+                       # да это наш комментарий
+                       waitList.append(obr)
     return waitList
 
 
+def findNew(cur, user):
+    """Находит все обращения специалиста в статусе новые
+    :param cur: курсор
+    :param user: специалист
+    :return: список номеров обращений
+    """
+    newList = list()
+    # получаем список всех обращений в статуса новое
+    cur.execute('SELECT ID FROM Obr WHERE UserId=? AND StatusObrId = 1', (user,))
+    obrList = cur.fetchall()
+    for i in obrList:
+        newList.append(i[0])
+    return newList
+
+
+def findNoWork(cur, user):
+    """Находит все обращения специалиста в статусе принято, старше 5 дней
+    :param cur: курсор
+    :param user: специалист
+    :return: список номеров обращений
+    """
+    obrList = list()
+    # получаем список всех обращений в статуса новое
+    cur.execute('SELECT ID FROM Obr WHERE UserId=? AND StatusObrId = 4 AND DATEADD(DAY,5,DatObr) <=GETDATE()', (user,))
+    tempList = cur.fetchall()
+    for i in tempList:
+        obrList.append(i[0])
+    return obrList
+
+
 if __name__ == '__main__':
+    """Направляет следующие напоминания:
+    1) Если у пользователя стоит Рассматривается = 1, то находит обращения, по которым уже идет работа,
+    а они висят в статусе новое или принято. Меняет им статус на Рассматривается
+    2) Ищет все обращения пользователя со статусом задания выданы, у которых все задания закрыты выполенны или
+    отменены и предалгает их закрыть.
+    3) Находит все обращения по которым пользователи не отвечают больше 5 дней
+    4) Находит все обращения в статусе новые.
+    5) Находит все обращения висящие в статусе принято более 5 дней.
+
+
+    """
     # читаю конфигурационный файл
     DB, users, work, err = config.readConfig()
     if err:
@@ -140,6 +185,10 @@ if __name__ == '__main__':
     except :
         print("Возникла ошибка при соединении с БД")
         exit(1)
+    #testToken = 'xoxp-17553803712-18481224293-22661996679-893c40205b'
+    # робот
+    testToken = 'xoxp-17553803712-33007504275-33977320690-ffbf11d351'
+    slack = Slacker(testToken)
     # перебираем пользователей
     for user in users:
         msg = ""
@@ -160,17 +209,39 @@ if __name__ == '__main__':
 
 
         # отрабатываем информирование по заданиям в обращении
-        complite = obrJobComplete(cur, user['id'])
+        complite, text = obrJobComplete(cur, user['id'])
+        msg += text
         if complite:
             msg += 'Есть обращения, которые можно закрыть т.к. выполнены все задания: %s \n' % complite
         else:
-            msg +="Незакрытых обращений с выполненными заданиями нет.\n"
+            msg +="Не закрытых обращений с выполненными заданиями нет.\n"
 
-        # находим долгие обращения
-        msg += 'Предлагаю закрыть эти указанные обращения, по ним пользователи не отвечали более %s дней: %s' % \
-              (d, obrValid2(cur, user['id'], d))
+        # находим обращения, по котором пользователи не отвечали больше 5 дней
+        n = obrValid2(cur, user['id'], d)
+        if n:
+            msg += 'Предлагаю закрыть эти указанные обращения, по ним пользователи не отвечали более %s дней: %s\n' \
+            % (d, n)
+        else:
+            msg += 'Обращений в которых пользователи не активны более %s дней нет\n' % d
+
+        # находим обращения, по котором пользователи не отвечали больше 5 дней
+        n = findNew(cur, user['id'])
+        if n:
+            msg += 'Есть новые обращения: %s\n' % (n)
+        else:
+            msg += 'Обращений в статусе новое нет.\n'
+
+        # находим обращения, которые висят в принято больше 5 дней
+        n = findNew(cur, user['id'])
+        if n:
+            msg += 'Обращения висят в принято больше 5 дней: %s\n' % (n)
+        else:
+            msg += 'Обращений висящих в принято больше 5 дней нет.\n'
 
         # печать результата
+        #msg = 'Коллеги, пробуется новая версия робокота. Будет отправлять сообщения не в jabber, а в Slack. В связи с этим отправка в jabber останавливается, в Slack начинается. У робота нет своей учетки, поэтому будет слать от Простакова Алексея. Удачи!'
+        print(msg)
+        '''
         if user['jabber']:
             # указан jabber, жлю туда
             fileName = 'jabberMsg/'+user['name']
@@ -178,9 +249,14 @@ if __name__ == '__main__':
             p = subprocess.Popen("""cat "%s" | sendxmpp %s""" % (fileName, user['jabber']), shell=True)
             # ждем завершения
             p.wait()
+        elif user['slack']:
+            # указан шлак, шлем сюда
+            fileName = 'slackMsg/'+user['name']
+            open(fileName, mode='w').write(msg)
+            slack.chat.post_message('@'+user['slack'], msg, as_user=True)
         else:
             # не указан - на печать
-            print (msg)
-
+            print(msg)
+        '''
     con.close()
     exit(0)
