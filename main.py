@@ -185,9 +185,9 @@ if __name__ == '__main__':
     except :
         print("Возникла ошибка при соединении с БД")
         exit(1)
-    #testToken = 'xoxp-17553803712-18481224293-22661996679-893c40205b'
-    # робот
-    testToken = 'xoxp-17553803712-33007504275-33977320690-ffbf11d351'
+    # прочитать токен  для робота
+    with open('token.txt', mode='r', encoding='utf-8') as fp:
+        testToken = fp.read()
     slack = Slacker(testToken)
     # перебираем пользователей
     for user in users:
@@ -238,21 +238,18 @@ if __name__ == '__main__':
         else:
             msg += 'Обращений висящих в принято больше 5 дней нет.\n'
 
-        # печать результата
-        #msg = 'Коллеги, пробуется новая версия робокота. Будет отправлять сообщения не в jabber, а в Slack. В связи с этим отправка в jabber останавливается, в Slack начинается. У робота нет своей учетки, поэтому будет слать от Простакова Алексея. Удачи!'
-        print(msg)
+        # сохраним для истории
+        fileName = 'msg/'+user['name']
+        open(fileName, mode='w').write(msg)
         '''
+        # отправка
         if user['jabber']:
-            # указан jabber, жлю туда
-            fileName = 'jabberMsg/'+user['name']
-            open(fileName, mode='w').write(msg)
+            # указан jabber, шлю туда
             p = subprocess.Popen("""cat "%s" | sendxmpp %s""" % (fileName, user['jabber']), shell=True)
             # ждем завершения
             p.wait()
         elif user['slack']:
             # указан шлак, шлем сюда
-            fileName = 'slackMsg/'+user['name']
-            open(fileName, mode='w').write(msg)
             slack.chat.post_message('@'+user['slack'], msg, as_user=True)
         else:
             # не указан - на печать
