@@ -19,7 +19,6 @@ import datetime
 from slacker import Slacker
 
 
-
 def jobList(cur, obr):
     """
     Получает список заданий по обращениям

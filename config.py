@@ -1,4 +1,5 @@
-# coding=utf8
+#!/usr/bin/python3.4
+# -*- coding: utf-8 -*-
 __author__ = 'Prostakov Alexey'
 """
 Описание
@@ -45,6 +46,7 @@ def readConfig(file="config.ini"):
                 user['correct1'] = i.get('Рассматривается', fallback=0)
                 user['jabber'] = i.get('jabber', fallback="")
                 user['slack'] = i.get('slack', fallback="")
+                user['stat'] = i.get('stat', fallback=0)
                 users.append(user)
             elif section == 'work':
                 work['noActiveObr'] = i.get('noActiveObr', fallback="5")
