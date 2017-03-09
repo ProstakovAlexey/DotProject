@@ -89,7 +89,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.p is None:
         print('Программе надо передать аргумент -p (период)')
-        #args.p = 'month'
+        #args.p = ['month']
         exit(1)
     args.p = args.p[0]
     if not (args.p in ('day', 'week', 'month')):
@@ -106,33 +106,25 @@ if __name__ == '__main__':
     # Соединение с БД
     con = getConnection(DB)
     for user in users:
+        # Хочет ли пользователь получать статистику?
         if user['stat']:
             msg = ''
+            # Выше я уже проверял что период корректный, поэтому сейчас по нему сразу запрашиваю.
+            # Предполагаю, что буду спрашивать по cron на следующий день, поэтому -1
+            kons, dorab, err = obr_analiz(user['id'],
+                                          datetime.datetime.today() - datetime.timedelta(days=1), args.p, con)
+            total = kons + dorab + err
             if args.p == 'week':
-                # Получение данных из ДПР по пользователю за неделю, предполагаю, что запускается в пн.
-                # поэтому вычитаю 1 день
-                kons, dorab, err = obr_analiz(user['id'], datetime.datetime.today()-datetime.timedelta(days=1), 'week', con)
-                total = kons + dorab + err
                 msg = 'За прошедшую неделю всего было обращений - %s. Из них консультации %s, исправление ошибок %s, ' \
                       'доработки %s.'% (total, kons, err, dorab)
             elif args.p == 'day':
-                # Получение данных из ДПР по пользователю за день
-                kons, dorab, err = obr_analiz(user['id'], datetime.datetime.today(), 'day', con)
-                total = kons + dorab + err
                 msg = 'За прошедший день всего было обращений - %s. Из них консультации %s, исправление ошибок %s, ' \
                       'доработки %s.' % (total, kons, err, dorab)
             elif args.p == 'month':
-                # Получение данных из ДПР по пользователю за месяц, предполагаю что запускаться будет 1-го числа
-                # поэтому вычитаю 1 день
-                kons, dorab, err = obr_analiz(user['id'], datetime.datetime.today()-datetime.timedelta(days=1), 'month', con)
-                total = kons + dorab + err
                 msg = 'За прошедший месяц всего было обращений - %s. Из них консультации %s, исправление ошибок ' \
                       '%s, доработки %s.' % (total, kons, err, dorab)
-            else:
-                print('Получил неизвестный период, проверьте аргументы программы.')
-                break
             if user['slack']:
-                # указан шлак, шлем сюда
+                # Указан шлак, шлем сюда
                 slack.chat.post_message('@' + user['slack'], msg, as_user=True)
     # Закрыть соединение
     con.close()
