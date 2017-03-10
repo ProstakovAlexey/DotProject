@@ -76,6 +76,27 @@ def getConnection (DB):
     return con
 
 
+def find_max_obr(m):
+    """
+    Находит 5 пользователь у кого больше всего обращений
+    :param m: словарь с инф. по массовой операции
+    :return: список id, по убыванию обращений.
+    """
+    # Список уже найденных
+    z = list()
+    n = 0
+    while n <= 5:
+        max_obr = 0
+        max_name = 0
+        for key in m.keys():
+            if (m[key][0] > max_obr) and not (key in z):
+                max_name = key
+                max_obr = m[key][0]
+        n += 1
+        z.append(max_name)
+    return z
+
+
 if __name__ == '__main__':
     """Консольная программа, получает в качестве параметра за какой период считать. Потом бежит по конф. файлу
     и проводит подсчет статистики по обращения для тех пользователей, у кого стоит флаг stat. В статистике обращения
@@ -89,8 +110,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.p is None:
         print('Программе надо передать аргумент -p (период)')
-        #args.p = ['month']
-        exit(1)
+        args.p = ['day']
+        #exit(1)
     args.p = args.p[0]
     if not (args.p in ('day', 'week', 'month')):
         print('Получил неизвестный период=%s, проверьте аргументы программы.' % args.p)
@@ -105,15 +126,21 @@ if __name__ == '__main__':
         exit(1)
     # Соединение с БД
     con = getConnection(DB)
+    users_stat = dict()
+    for user in users:
+        kons, dorab, err = obr_analiz(user['id'],
+                                      datetime.datetime.today() - datetime.timedelta(days=1), args.p, con)
+        total = kons + dorab + err
+        users_stat[user['id']] = (total, kons, dorab, err)
+    liaders = find_max_obr(users_stat)
     for user in users:
         # Хочет ли пользователь получать статистику?
         if user['stat']:
             msg = ''
+            total, kons, dorab, err = users_stat[user['id']]
             # Выше я уже проверял что период корректный, поэтому сейчас по нему сразу запрашиваю.
             # Предполагаю, что буду спрашивать по cron на следующий день, поэтому -1
-            kons, dorab, err = obr_analiz(user['id'],
-                                          datetime.datetime.today() - datetime.timedelta(days=1), args.p, con)
-            total = kons + dorab + err
+
             if args.p == 'week':
                 msg = 'За прошедшую неделю всего было обращений - %s. Из них консультации %s, исправление ошибок %s, ' \
                       'доработки %s.'% (total, kons, err, dorab)
@@ -123,8 +150,15 @@ if __name__ == '__main__':
             elif args.p == 'month':
                 msg = 'За прошедший месяц всего было обращений - %s. Из них консультации %s, исправление ошибок ' \
                       '%s, доработки %s.' % (total, kons, err, dorab)
+            msg += r' У лучшего социтовца %s обращений.' % users_stat[liaders[0]][0]
+            if user['id'] in liaders:
+                msg += ' Ты в пятерке лидеров, можно расслабится и отдохнуть.'
+            else:
+                msg += ' Ты не в пятерке лидеров, у 5-го %s обращений, поднажми!' % users_stat[liaders[4]][0]
+
             if user['slack']:
                 # Указан шлак, шлем сюда
                 slack.chat.post_message('@' + user['slack'], msg, as_user=True)
+
     # Закрыть соединение
     con.close()
