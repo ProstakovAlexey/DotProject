@@ -21,10 +21,10 @@ def obr_analiz(user_id, start_date, period, con):
         sql_string = "SELECT TargetObrTypeId FROM Obr where USERID=%s and year(DatObr)=%s and MONTH(DatObr)=%s" \
                      "and DAY(DatObr)=%s" % (user_id, start_date.year, start_date.month, start_date.day)
     elif period == 'week':
-        end_date = start_date + datetime.timedelta(days=7)
-        format_str = '%Y-%m-%dT%H:%M:%S'
+        end_date = start_date - datetime.timedelta(days=7)
+        format_str = '%Y-%m-%dT23:59:59'
         sql_string = "SELECT TargetObrTypeId FROM Obr where USERID=%s and DatObr BETWEEN '%s' AND '%s'" % \
-                     (user_id, start_date.strftime(format_str), end_date.strftime(format_str))
+                     (user_id, end_date.strftime(format_str), start_date.strftime(format_str))
     elif period == 'month':
         sql_string = "SELECT TargetObrTypeId FROM Obr where USERID=%s and year(DatObr)=%s and MONTH(DatObr)=%s" % \
                      (user_id, start_date.year, start_date.month)
@@ -86,7 +86,8 @@ def find_max_obr(m):
     z = list()
     n = 0
     while n <= 5:
-        max_obr = 0
+        # Это нужно, если у всех 0 обращений, чтобы чей-то id попал в статистику
+        max_obr = -1
         max_name = 0
         for key in m.keys():
             if (m[key][0] > max_obr) and not (key in z):
@@ -110,7 +111,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.p is None:
         print('Программе надо передать аргумент -p (период)')
-        args.p = ['day']
+        args.p = ['week']
         #exit(1)
     args.p = args.p[0]
     if not (args.p in ('day', 'week', 'month')):
