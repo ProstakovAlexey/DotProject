@@ -17,6 +17,7 @@ def obr_analiz(user_id, start_date, period, con):
     :param con: соединение с БД
     :return: список (консультации, доработки, ошибки)
     """
+    sql_string = ''
     if period == 'day':
         sql_string = "SELECT TargetObrTypeId FROM Obr where USERID=%s and year(DatObr)=%s and MONTH(DatObr)=%s" \
                      "and DAY(DatObr)=%s" % (user_id, start_date.year, start_date.month, start_date.day)
@@ -55,6 +56,7 @@ def getConnection (DB):
     :param DB: словарь с параметрами для соединения
     :return: коннект
     """
+    con = None
     # определяет, на какой ОС запущен
     os = platform.system()
     if os == 'Linux':
@@ -141,7 +143,6 @@ if __name__ == '__main__':
             total, kons, dorab, err = users_stat[user['id']]
             # Выше я уже проверял что период корректный, поэтому сейчас по нему сразу запрашиваю.
             # Предполагаю, что буду спрашивать по cron на следующий день, поэтому -1
-
             if args.p == 'week':
                 msg = 'За прошедшую неделю всего было обращений - %s. Из них консультации %s, исправление ошибок %s, ' \
                       'доработки %s.'% (total, kons, err, dorab)
