@@ -1,5 +1,4 @@
-#!/usr/bin/python3.4
-# -*- coding: utf-8 -*-
+# coding=utf8
 __author__ = 'Prostakov Alexey'
 """
 Описание
@@ -19,7 +18,7 @@ def readConfig(file="config.ini"):
     DB = dict()
     work = dict()
     users = list()
-    err = 0
+    err = None
     if os.access(file, os.F_OK):
         # выполняется если найден конфигурационный файл
         config_str = open(file, encoding='utf-8', mode='r').read()
@@ -52,8 +51,7 @@ def readConfig(file="config.ini"):
                 work['noActiveObr'] = i.get('noActiveObr', fallback="5")
 
     else:
-        print("Ошибка! Не найден конфигурационный файл")
-        err = 1
+        err = "Ошибка! Не найден конфигурационный файл"
     return DB, users, work, err
 
 

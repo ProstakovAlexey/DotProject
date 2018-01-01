@@ -1,15 +1,7 @@
 # coding=utf8
 __author__ = 'Prostakov Alexey'
 """
-Описание
-**********************
-
-Входные данные
-**********************
-
-Выходные данные
-**********************
-
+Проводит анализ
 """
 # библиотека для работы с БД
 import pypyodbc
@@ -45,6 +37,7 @@ def obrJobComplete(cur, user):
     # получаем список обращений пользователя со статусом задания выданы
     cur.execute('SELECT id FROM Obr WHERE UserId = ? and StatusObrId = ?', (user, 6))
     complete = list()
+    obr_with_error = list()
     for res in cur.fetchall():
         obr = res[0]
         # находим все задания к этому обращению, у которых статус не равен выполнено или отменено
@@ -61,9 +54,12 @@ def obrJobComplete(cur, user):
             res = cur.fetchone()
             if res == None:
                 # не найдены не выполненные задания
-                complete.append(obr)
+                complete.append(str(obr))
         else:
-            msg = 'Ошибка в обращении %s. Установлен статус задания выданы, а ни одного задания нет.\n' % obr
+            # Выдает всегда только одно обращение
+            obr_with_error.append(str(obr))
+    if obr_with_error:          
+            msg = 'Ошибка в обращении(ях): %s. Установлен статус задания выданы, а ни одного задания нет.\n' % ';'.join(obr_with_error)
     return complete, msg
 
 
@@ -87,7 +83,7 @@ def obrValid1(cur, user):
         (SELECT DISTINCT userId FROM ObrComment where ObrId = ?) and Users.UserTypeId=1""", (obr,))
         # есть хотя бы один пользователь
         if cur.fetchone()[0] > 0:
-            correctList.append(obr)
+            correctList.append(str(obr))
             cur.execute('update Obr set StatusObrId = 3 where Id = ?', (obr,))
     return correctList
 
@@ -120,7 +116,7 @@ def obrValid2(cur, user, day=5):
                 if res:
                     if res[0] == 1:
                        # да это наш комментарий
-                       waitList.append(obr)
+                       waitList.append(str(obr))
     return waitList
 
 
@@ -135,7 +131,7 @@ def findNew(cur, user):
     cur.execute('SELECT ID FROM Obr WHERE UserId=? AND StatusObrId = 1', (user,))
     obrList = cur.fetchall()
     for i in obrList:
-        newList.append(i[0])
+        newList.append(str(i[0]))
     return newList
 
 
@@ -150,7 +146,7 @@ def findNoWork(cur, user):
     cur.execute('SELECT ID FROM Obr WHERE UserId=? AND StatusObrId = 4 AND DATEADD(DAY,5,DatObr) <=GETDATE()', (user,))
     tempList = cur.fetchall()
     for i in tempList:
-        obrList.append(i[0])
+        obrList.append(str(i[0]))
     return obrList
 
 
@@ -199,7 +195,7 @@ if __name__ == '__main__':
             correctList = obrValid1(cur, user['id'])
             if correctList:
                 msg += """Есть обращения по которым идет работа, но они все еще висят в статусе новое или принято: %s.
-Их статус был автоматически заменен на Рассматривается\n""" % correctList
+Их статус был автоматически заменен на Рассматривается\n""" % '; '.join(correctList)
                 con.commit()
             else:
                 msg += 'Обращений, по которым идет работа, но статус новое или принято: нет.\n'
@@ -211,7 +207,8 @@ if __name__ == '__main__':
         complite, text = obrJobComplete(cur, user['id'])
         msg += text
         if complite:
-            msg += 'Есть обращения, которые можно закрыть т.к. выполнены все задания: %s \n' % complite
+            print(complite)
+            msg += 'Есть обращения, которые можно закрыть т.к. выполнены все задания: %s \n' % '; '.join(complite)
         else:
             msg +="Не закрытых обращений с выполненными заданиями нет.\n"
 
@@ -219,28 +216,27 @@ if __name__ == '__main__':
         n = obrValid2(cur, user['id'], d)
         if n:
             msg += 'Предлагаю закрыть эти указанные обращения, по ним пользователи не отвечали более %s дней: %s\n' \
-            % (d, n)
+            % (d, '; '.join(n))
         else:
             msg += 'Обращений в которых пользователи не активны более %s дней нет\n' % d
 
         # находим все новые обращения
         n = findNew(cur, user['id'])
         if n:
-            msg += 'Есть новые обращения (%s шт): %s\n' % (len(n), n)
+            msg += 'Есть новые обращения (%s шт): %s\n' % (len(n), '; '.join(n))
         else:
             msg += 'Обращений в статусе новое нет.\n'
 
         # находим обращения, которые висят в принято больше 5 дней
         n = findNoWork(cur, user['id'])
         if n:
-            msg += 'Обращения висят в принято больше 5 дней (%s шт): %s\n' % (len(n), n)
+            msg += 'Обращения висят в принято больше 5 дней (%s шт): %s\n' % (len(n), '; '.join(n))
         else:
             msg += 'Обращений висящих в принято больше 5 дней нет.\n'
 
         # сохраним для истории
         fileName = 'msg/'+user['name']
         open(fileName, mode='w').write(msg)
-        '''
         # отправка
         if user['jabber']:
             # указан jabber, шлю туда
@@ -248,11 +244,11 @@ if __name__ == '__main__':
             # ждем завершения
             p.wait()
         elif user['slack']:
+            #pass
             # указан шлак, шлем сюда
             slack.chat.post_message('@'+user['slack'], msg, as_user=True)
         else:
             # не указан - на печать
             print(msg)
-        '''
     con.close()
     exit(0)
