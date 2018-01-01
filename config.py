@@ -18,6 +18,7 @@ def readConfig(file="config.ini"):
     DB = dict()
     work = dict()
     users = list()
+    imap = dict()
     err = None
     if os.access(file, os.F_OK):
         # выполняется если найден конфигурационный файл
@@ -46,13 +47,20 @@ def readConfig(file="config.ini"):
                 user['jabber'] = i.get('jabber', fallback="")
                 user['slack'] = i.get('slack', fallback="")
                 user['stat'] = i.get('stat', fallback=0)
+                user['imap'] = i.get('imap', fallback="")
+                user['new_obr'] = i.get('new_obr', fallback=0)
                 users.append(user)
             elif section == 'work':
                 work['noActiveObr'] = i.get('noActiveObr', fallback="5")
+            elif section == 'imap':
+                imap['host'] = i.get('host', fallback="127.0.0.1")
+                imap['user'] = i.get('user', fallback="socit")
+                imap['password'] = i.get('password', fallback="111")
+                imap['days'] = int(i.get('days', fallback="3"))
 
     else:
         err = "Ошибка! Не найден конфигурационный файл"
-    return DB, users, work, err
+    return DB, users, work, imap, err
 
 
 def configValidator(DB, users, work):

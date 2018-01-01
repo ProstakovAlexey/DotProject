@@ -73,12 +73,12 @@ def get_сonnect(db_info):
         pass
     else:
         err_string = 'Запущен на не известной ОС. Работает только с Linux и Windows.'
-    #try:
+    try:
         # Пробую соединится
-    if err_string is None:
-        con_result = pypyodbc.connect(con_string)
-    #except:
-    #    err_string = "Возникла ошибка при соединении с БД ТИ, строка соединения %s" % con_string
+        if err_string is None:
+            con_result = pypyodbc.connect(con_string)
+    except:
+        err_string = "Возникла ошибка при соединении с БД ТИ, строка соединения %s" % con_string
     return con_result, err_string
 
 
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     slack = Slacker(testToken)
     logging.debug('Соединился со Slack')
     # Читаю конфигурационный файл
-    DB, users, work, err_message = config.readConfig()
+    DB, users, work, imap, err_message = config.readConfig()
     if err_message:
         logging.critical(err_message)
         exit(1)
