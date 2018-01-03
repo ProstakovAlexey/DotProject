@@ -95,3 +95,33 @@ def configValidator(DB, users, work):
     else:
         errMess += 'Нет ни одного пользователя для допроджекта'
     return errMess
+
+
+def read_proj_info(file_name):
+    """
+    Читает конфигурационный файл с инф. по проекту
+    :param file_name: имя файла
+    :return: словарь и сообщение об ошибке
+    """
+    proj = {'project_id': None, 'reg_id': 0}
+    err_msg = ""
+    if os.access(file_name, os.F_OK):
+        # выполняется если найден конфигурационный файл
+        config_str = open(file_name, encoding='utf-8', mode='r').read()
+        # удалить признак кодировки
+        config_str = config_str.replace(u'\ufeff', '')
+        Config = configparser.ConfigParser()
+        Config.read_string(config_str)
+        sections = Config.sections()
+        for section in sections:
+            i = Config[section]
+            if section == 'PROJECT':
+                proj['reg_id'] = int(i.get('reg_id', fallback=0))
+                proj['project_id'] = int(i.get('project_id', fallback=0))
+        # Проверка на заполненность
+        for key in proj.keys():
+            if proj[key] == 0:
+                err_msg += 'Свойство проекта {0} не может быть пустым. '.format(key)
+    else:
+        err_msg = 'Конфигурационный файл {0} не найден'.format(file_name)
+    return proj, err_msg
