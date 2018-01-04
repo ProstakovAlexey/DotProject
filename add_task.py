@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 import config
-import pypyodbc
-import platform
 import datetime
 import leaders
-import project_files
-import re
 import glob
 import os
 import csv
 
-
 """
-Добавляет задания из файла CSV
+Добавляет задания в ДПР из файла CSV
 """
 
 
@@ -37,13 +32,13 @@ def get_dpr_id(name, users):
     :param users: словарь с пользователя
     :return: id или 0 (если не нашел)
     """
-    dpr_id = 0
+    user_dpr_id = 0
     name = name.lower()
     for user in users:
         if user['name'].lower() == name:
-            dpr_id = user['id']
+            user_dpr_id = user['id']
             break
-    return dpr_id
+    return user_dpr_id
 
 
 def task_print(task):
@@ -65,37 +60,37 @@ def task_print(task):
     return result
 
 
-def add_task_into_dpr(task, cur):
+def add_task_into_dpr(task_dict, cursor):
     """
     Добавляет задание в ДПР, вместе с его комментарием
-    :param task: задание
-    :param cur: курсок
+    :param task_dict: задание
+    :param cursor: курсок
     :return: номер задания
     """
-    cur.execute('insert Tasks (WorkTypeId, name, UserStartId , UserTestId, UserDevelopId, '
+    cursor.execute('insert Tasks (WorkTypeId, name, UserStartId , UserTestId, UserDevelopId, '
                 'StatusId, regionId, TopicId, dateStart, planDate, PriorTypeId)'
                 'VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 4)',
-                (task['name'], task['user_start_id'], task['user_test_id'],
-                 task['user_develop_id'], task['status_id'], task['region_id'], task['project_id'],
-                 task['date_start'], task['date_plan_end']))
-    cur.commit()
-    task_id = task_find(task, cur)
-    cur.execute('INSERT TaskComment (taskid, comment, dt, userid) VALUES (?, ?, ?, ?)',
-                (task_id, task['note'], datetime.datetime.now(), task['user_start_id']))
-    cur.commit()
+                   (task_dict['name'], task_dict['user_start_id'], task_dict['user_test_id'],
+                    task_dict['user_develop_id'], task_dict['status_id'], task_dict['region_id'],
+                    task_dict['project_id'], task_dict['date_start'], task_dict['date_plan_end']))
+    cursor.commit()
+    task_id = task_find(task_dict, cursor)
+    cursor.execute('INSERT TaskComment (taskid, comment, dt, userid) VALUES (?, ?, ?, ?)',
+                   (task_id, task_dict['note'], datetime.datetime.now(), task_dict['user_start_id']))
+    cursor.commit()
     return task_id
 
 
-def task_find(task, cur):
+def task_find(task, cursor):
     """
     Ищет задание в БД, если находит возвращает его ID. Если нет - 0
     :param task: словарь с заданием
-    :param cur: курсок к БД
+    :param cursor: курсок к БД
     :return: ID или 0
     """
     task_id = 0
-    cur.execute('SELECT id FROM Tasks WHERE name=? AND TopicId=?', (task['name'], task['project_id']))
-    res = cur.fetchone()
+    cursor.execute('SELECT id FROM Tasks WHERE name=? AND TopicId=?', (task['name'], task['project_id']))
+    res = cursor.fetchone()
     if res:
         task_id = res[0]
     return task_id
@@ -179,4 +174,6 @@ if __name__ == '__main__':
             if answer == 'y' or answer == 'н':
                 # добавляем задание
                 print('Добавил, задание №%s' % add_task_into_dpr(task_for_dpr, cur))
-        con.close()
+    con.close()
+    print('Программа работу закончила')
+    exit(0)

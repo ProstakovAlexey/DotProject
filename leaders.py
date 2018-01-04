@@ -77,8 +77,8 @@ def get_сonnect(db_info):
         # Пробую соединится
         if err_string is None:
             con_result = pypyodbc.connect(con_string)
-    except:
-        err_string = "Возникла ошибка при соединении с БД ТИ, строка соединения %s" % con_string
+    except pypyodbc.DatabaseError as err_msg:
+        err_string = "Возникла ошибка при соединении с БД ТИ, строка соединения %s. Ошибка: %s" % (con_string, err_msg)
     return con_result, err_string
 
 
