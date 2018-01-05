@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import config
-import pypyodbc
-import platform
+
 import datetime
 import leaders
 import project_files
@@ -94,6 +93,8 @@ def task_find(task, cur):
     :return: ID или 0
     """
     task_id = 0
+    #sql = r"SELECT id FROM Tasks WHERE name='%s' AND TopicId=%s" % (task['name'], task['project_id'])
+    #cur.execute(sql)
     cur.execute('SELECT id FROM Tasks WHERE name=? AND TopicId=?', (task['name'], task['project_id']))
     res = cur.fetchone()
     if res:
