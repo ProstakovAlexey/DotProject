@@ -159,13 +159,21 @@ if __name__ == '__main__':
                 # Окончание плановое
                 task_for_dpr['date_plan_end'] = datetime.datetime.strptime(i[4], "%d-%m-%Y %H:%M")
                 task_for_dpr['note'] = i[5].strip()
+                task_for_dpr['complete'] = i[6].strip()
                 tasks_for_dpr.append(task_for_dpr)
         csv_file.close()
         # Будем добавлять задания
         for task_for_dpr in tasks_for_dpr:
             # Проверить, вдруг такое задание уже есть. В этом случае добавлять не будем
-            if task_find(task_for_dpr, cur):
+            task_id_dpr = task_find(task_for_dpr, cur)
+            if task_id_dpr:
                 print('Такое задание уже есть, но не будет добавлено')
+                if task_for_dpr['complete'] == '100%':
+                    print('Задание №%s выполнено, отмечаю его в ДПР' % task_id_dpr)
+                    # Отмечаю только те задания, которые ранее были не закрыты (статус != 3)
+                    cur.execute('UPDATE Tasks SET StatusId = 3, datetest = GETDATE(), dateEnd = GETDATE() '
+                                'WHERE id=? AND StatusId != 3', (task_id_dpr,))
+                    cur.commit()
                 continue
             # Если задания нет, то показать пользователю что получилось
             print('Предлагаю добавить задание:\n {}'.format(task_print(task_for_dpr)))
