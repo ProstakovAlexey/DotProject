@@ -4,8 +4,8 @@ import platform
 import datetime
 import argparse
 from slacker import Slacker
-import pypyodbc
 import logging
+import pyodbc
 
 
 def obr_analiz(user_id, start_date, period_for_report, connection):
@@ -58,27 +58,23 @@ def get_сonnect(db_info):
     """
     err_string = None
     con_result = None
-    # Это строка соединения для Linux
-    con_string = "DRIVER=FreeTDS; SERVER=%s; PORT=%s; DATABASE=%s; UID=sa; PWD=%s; TDS_Version=8.0; " \
-                 "ClientCharset=UTF8; autocommit=True" % \
-                 (db_info['adr'], db_info['port'], db_info['name'], db_info['pwd'])
+    con_string = None
     # Определяет, на какой ОС запущен, т.к. я запускаю и на windows
     os = platform.system()
-    if os == 'Windows':
-        # Для windows 2003 тут нужно указать другую версию клиента
-        con_string = 'DRIVER={SQL Server Native Client 11.0}; SERVER=%s; DATABASE=%s; UID=sa; PWD=%s' \
-               % (db_info['adr'], db_info['name'], db_info['pwd'])
-    elif os == 'Linux':
-        # Для нее подходит строка по умолчанию
-        pass
-    else:
-        err_string = 'Запущен на не известной ОС. Работает только с Linux и Windows.'
     try:
-        # Пробую соединится
-        if err_string is None:
-            con_result = pypyodbc.connect(con_string)
-    except pypyodbc.DatabaseError as err_msg:
-        err_string = "Возникла ошибка при соединении с БД ТИ, строка соединения %s. Ошибка: %s" % (con_string, err_msg)
+        if os == 'Windows':
+            # Для windows 2003 тут нужно указать другую версию клиента
+            con_string = 'DRIVER={SQL Server Native Client 11.0}; SERVER=%s; DATABASE=%s; UID=sa; PWD=%s' \
+                   % (db_info['adr'], db_info['name'], db_info['pwd'])
+            con_result = pyodbc.connect(con_string)
+        elif os == 'Linux':
+            con_string = "DRIVER={ODBC Driver 13 for SQL Server}; SERVER=%s,%s; DATABASE=%s; UID=sa; PWD=%s;" %\
+                      (db_info['adr'], db_info['port'], db_info['name'], db_info['pwd'])
+            con_result = pyodbc.connect(con_string)
+        else:
+            err_string = 'Запущен на не известной ОС. Работает только с Linux и Windows.'
+    except pyodbc.InterfaceError as err:
+        err_string = "Возникла ошибка при соединении с БД ТИ %s, строка соединения %s" % (err, con_string)
     return con_result, err_string
 
 
