@@ -19,7 +19,7 @@ def get_name(tj_name):
     """
     user_name_list = list()
     for i in tj_name.split(sep=' '):
-        if not (i.find('(') > -1 and i.find(')') > -1):
+        if not (i[0] == '(' and i[-1] == ')'):
             # Это не кусок со скобками, любимый tj, его буду включать
             user_name_list.append(i)
     return ' '.join(user_name_list)
@@ -141,7 +141,7 @@ if __name__ == '__main__':
                 # Доработка
                 task_for_dpr['work_type_id'] = 1
                 # Название задания
-                task_for_dpr['name'] = i[1].strip()
+                task_for_dpr['name'] = get_name(i[1].strip())
                 # Кто выдал
                 task_for_dpr['user_start_id'] = 2
                 # Кто тестирует
