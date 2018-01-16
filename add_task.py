@@ -107,6 +107,7 @@ if __name__ == '__main__':
         exit(1)
     cur = con.cursor()
     # Находим все project_files файлы в каталоге project_files
+    date_now = datetime.datetime.now()
     for file in glob.glob('project_files/*.csv'):
         csv_file_name = os.path.split(file)[1]
         # Проверим, если для него конфигурационный файл, если нет, то не буду обрабатывать
@@ -156,6 +157,9 @@ if __name__ == '__main__':
                 task_for_dpr['region_id'] = project_info['reg_id']
                 # Начало
                 task_for_dpr['date_start'] = datetime.datetime.strptime(i[3], "%d-%m-%Y %H:%M")
+                # ДПР путается, если дата выдачи больше текущей, поэтому ставлю текущую
+                if task_for_dpr['date_start'] > date_now:
+                    task_for_dpr['date_start'] = date_now
                 # Окончание плановое
                 task_for_dpr['date_plan_end'] = datetime.datetime.strptime(i[4], "%d-%m-%Y %H:%M")
                 task_for_dpr['note'] = i[5].strip()
