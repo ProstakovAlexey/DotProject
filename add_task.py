@@ -19,9 +19,12 @@ def get_name(tj_name):
     """
     user_name_list = list()
     for i in tj_name.split(sep=' '):
-        if not (i[0] == '(' and i[-1] == ')'):
-            # Это не кусок со скобками, любимый tj, его буду включать
-            user_name_list.append(i)
+        try:
+            if not (i[0] == '(' and i[-1] == ')'):
+                # Это не кусок со скобками, любимый tj, его буду включать
+                user_name_list.append(i)
+        except IndexError:
+            pass
     return ' '.join(user_name_list)
 
 
@@ -78,6 +81,10 @@ def add_task_into_dpr(task_dict, cursor):
     cursor.execute('INSERT TaskComment (taskid, comment, dt, userid) VALUES (?, ?, ?, ?)',
                    (task_id, task_dict['note'], datetime.datetime.now(), task_dict['user_start_id']))
     cursor.commit()
+    # Если есть обращение, то вставить связку на него
+    if task_dict['obr_id'] > 0:
+        cursor.execute('INSERT Task#Obr (ObrId, TaskId) VALUES (?, ?)', (task_dict['obr_id'], task_id))
+        cursor.commit()
     return task_id
 
 
@@ -157,6 +164,8 @@ if __name__ == '__main__':
                 task_for_dpr['region_id'] = project_info['reg_id']
                 # Начало
                 task_for_dpr['date_start'] = datetime.datetime.strptime(i[3], "%d-%m-%Y %H:%M")
+                # Обращение
+                task_for_dpr['obr_id'] = project_info['obr_id']
                 # ДПР путается, если дата выдачи больше текущей, поэтому ставлю текущую
                 if task_for_dpr['date_start'] > date_now:
                     task_for_dpr['date_start'] = date_now
@@ -169,9 +178,10 @@ if __name__ == '__main__':
         # Будем добавлять задания
         for task_for_dpr in tasks_for_dpr:
             # Проверить, вдруг такое задание уже есть. В этом случае добавлять не будем
+            print('Обрабатываю:', task_for_dpr['name'])
             task_id_dpr = task_find(task_for_dpr, cur)
             if task_id_dpr:
-                print('Такое задание уже есть, но не будет добавлено')
+                print('Такое задание уже есть, но не будет добавлено:', task_id_dpr)
                 if task_for_dpr['complete'] == '100%':
                     print('Задание №%s выполнено, отмечаю его в ДПР' % task_id_dpr)
                     # Отмечаю только те задания, которые ранее были не закрыты (статус != 3)

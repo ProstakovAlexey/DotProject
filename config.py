@@ -118,9 +118,10 @@ def read_proj_info(file_name):
             if section == 'PROJECT':
                 proj['reg_id'] = int(i.get('reg_id', fallback=0))
                 proj['project_id'] = int(i.get('project_id', fallback=0))
+                proj['obr_id'] = int(i.get('obr_id', fallback=0))
         # Проверка на заполненность
         for key in proj.keys():
-            if proj[key] == 0:
+            if proj[key] == 0 and key != 'obr_id':
                 err_msg += 'Свойство проекта {0} не может быть пустым. '.format(key)
     else:
         err_msg = 'Конфигурационный файл {0} не найден'.format(file_name)
